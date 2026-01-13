@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seed Data - Restaurant App</title>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore-compat.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            margin: 0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        .content {
+            padding: 30px;
+        }
+        .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #2196F3;
+            padding: 20px;
+            border-radius: 4px;
+            margin-bottom: 30px;
+        }
+        .info-box h3 {
+            color: #1976D2;
+            margin-bottom: 10px;
+        }
+        .info-box ul {
+            margin-left: 20px;
+            line-height: 1.8;
+        }
+        .config-note {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            padding: 12px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            font-size: 14px;
+            color: #856404;
+        }
+        button {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+            margin-bottom: 20px;
+        }
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        button:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+        }
+        .log {
+            margin-top: 20px;
+            padding: 20px;
+            background: #1e1e1e;
+            border-radius: 8px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+        .log-item {
+            margin-bottom: 8px;
+            word-wrap: break-word;
+        }
+        .log-success { color: #4CAF50; }
+        .log-error { color: #f44336; }
+        .log-info { color: #2196F3; }
+        .log-warning { color: #ff9800; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 Seed Data vào Firestore</h1>
+            <p>Khởi tạo dữ liệu mẫu cho ứng dụng Quản lý Nhà hàng</p>
+        </div>
+        
+        <div class="content">
+            <div class="info-box">
+                <h3>📋 Thông tin</h3>
+                <ul>
+                    <li>Script sẽ thêm <strong>4 customers</strong>, <strong>18 menu items</strong> và <strong>3 reservations</strong></li>
+                    <li>Config Firebase đã được điền sẵn từ project của bạn</li>
+                    <li>Click nút bên dưới để seed dữ liệu</li>
+                </ul>
+            </div>
+
+            <div class="config-note">
+                💡 Config Firebase đã được điền sẵn từ firebase_options.dart. Nếu bạn dùng project khác, vui lòng chỉnh sửa trong code.
+            </div>
+
+            <button id="seedBtn" onclick="runSeedData()">🌱 Seed Dữ Liệu</button>
+
+            <div class="log" id="log"></div>
+        </div>
+    </div>
+
+    <script>
+        // Firebase config từ firebase_options.dart
+        const firebaseConfig = {
+            apiKey: "AIzaSyCjM3ECahBp40_ZHLln2ofvOjZF8_8yu8o",
+            authDomain: "restaurant-app-1771020358.firebaseapp.com",
+            projectId: "restaurant-app-1771020358",
+            storageBucket: "restaurant-app-1771020358.firebasestorage.app",
+            messagingSenderId: "349120585515",
+            appId: "1:349120585515:web:default"
+        };
+
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const logItem = document.createElement('div');
+            logItem.className = `log-item log-${type}`;
+            logItem.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logDiv.appendChild(logItem);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        async function runSeedData() {
+            const btn = document.getElementById('seedBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ Đang xử lý...';
+            document.getElementById('log').innerHTML = '';
+
+            try {
+                log('🔄 Đang khởi tạo Firebase...', 'info');
+                
+                let app;
+                try {
+                    app = firebase.app();
+                    log('✅ Firebase đã được khởi tạo', 'info');
+                } catch (e) {
+                    app = firebase.initializeApp(firebaseConfig);
+                    log('✅ Đã khởi tạo Firebase thành công!', 'success');
+                }
+                
+                const db = firebase.firestore();
+                log('✅ Đã kết nối Firestore!', 'success');
+
+                // 1. SEED CUSTOMERS
+                log('\n📝 Đang seed customers...', 'info');
+                const customers = [
+                    {
+                        email: 'nguyenvana@example.com',
+                        fullName: 'Nguyễn Văn A',
+                        phoneNumber: '0123456789',
+                        address: '123 Đường ABC, Quận 1, TP.HCM',
+                        preferences: ['vegetarian', 'spicy'],
+                        loyaltyPoints: 0,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                        isActive: true,
+                    },
+                    {
+                        email: 'tranthib@example.com',
+                        fullName: 'Trần Thị B',
+                        phoneNumber: '0987654321',
+                        address: '456 Đường XYZ, Quận 2, TP.HCM',
+                        preferences: ['seafood'],
+                        loyaltyPoints: 500,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                        isActive: true,
+                    },
+                    {
+                        email: 'levanc@example.com',
+                        fullName: 'Lê Văn C',
+                        phoneNumber: '0912345678',
+                        address: '789 Đường DEF, Quận 3, TP.HCM',
+                        preferences: ['spicy'],
+                        loyaltyPoints: 1200,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                        isActive: true,
+                    },
+                    {
+                        email: 'phamthid@example.com',
+                        fullName: 'Phạm Thị D',
+                        phoneNumber: '0923456789',
+                        address: '321 Đường GHI, Quận 4, TP.HCM',
+                        preferences: ['vegetarian'],
+                        loyaltyPoints: 300,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                        isActive: true,
+                    },
+                ];
+
+                const customerIds = [];
+                const customerBatch = db.batch();
+                for (const customer of customers) {
+                    const docRef = db.collection('customers').doc();
+                    customerIds.push(docRef.id);
+                    customerBatch.set(docRef, customer);
+                }
+                await customerBatch.commit();
+                log(`✅ Đã seed ${customers.length} customers`, 'success');
+
+                // 2. SEED MENU ITEMS
+                log('\n📝 Đang seed menu items...', 'info');
+                const menuItems = [
+                    { name: 'Gỏi Cuốn', description: 'Gỏi cuốn tôm thịt tươi ngon với bánh tráng và rau sống', category: 'Appetizer', price: 35000, imageUrl: '', ingredients: ['bánh tráng', 'tôm', 'thịt', 'rau sống', 'bún', 'nước mắm'], isVegetarian: false, isSpicy: false, preparationTime: 10, isAvailable: true, rating: 4.7, createdAt: firebase.firestore.FieldValue.serverTimestamp() },
+                    { name: 'Chả Giò', description: 'Chả giò giòn rụm, nhân thịt heo và tôm', category: 'Appetizer', price: 40000, imageUrl: '', ingredients: ['bánh tráng', 'thịt heo', 'tôm', 'nấm', 'cà rốt'], isVegetarian: false, isSpicy: false, preparationTime: 15, isAvailable: true, rating: 4.5, createdAt: firebase.firestore.FieldValue.serverTimestamp() },
+                    { name: 'Gỏi Đu Đủ', description: 'Gỏi đu đủ chua ngọt, tươi mát', category: 'Appetizer', price: 30000, imageUrl: '', ingredients: ['đu đủ', 'tôm khô', 'rau thơm', 'đậu phộng', 'nước mắm'], isVegetarian: false, isSpicy: true, preparationTime: 8, isAvailable: true, rating: 4.3, createdAt: firebase.firestore.FieldValue.serverTimestamp() },
+                    { name: 'Phở Bò', description: 'Phở bò truyền thống Việt Nam với nước dùng đậm đà, thịt bò tái', category: 'Main Course', price: 50000, imageUrl: '', ingredients: ['bánh phở', 'thịt bò', 'hành', 'rau thơm', 'chanh', 'ớt'], isVegetarian: false, isSpicy: false, preparationTime: 15, isAvailable: true, rating: 4.5, createdAt: firebase.firestore.FieldValue.serverTimestamp() },
+                    { name: 'Phở Gà', description: 'Phở gà thơm ngon, nước dùng trong, thịt gà mềm', category: 'Main Course', price: 45000, imageUrl: '', ingredients: ['bánh phở', 'thịt gà', 'hành', 'rau thơm', 'chanh'], isVegetarian: false, isSpicy: false, preparationTime: 12, isAvailable: true, rating: 4.3, createdAt: firebase.firestore.FieldValue.serverTimestamp() },
+                    { name: 'Bún Bò Huế', description: 'Bún bò Huế cay nồng đậm đà, đặc trưng miền Trung', category: 'Main Course', price: 55000, imageUrl: '', ingredients: ['bún', 'thịt bò', 'chả', 'rau thơm', 'ớt', 'sả'], isVegetarian: false, isSpicy: true, preparationTime: 20, isAvailable: true, rating: 4.8, createdAt: firebase.firestore.FieldValue.serverTimestamp() },
+                    { name: 'Bún Chả', description: 'Bún chả Hà Nội với thịt nướng thơm lừng', category: 'Main Course', price: 60000, imageUrl: '', ingredients: ['bún', 'thịt nướng', 'rau sống', 'nước mắm pha'], isVegetarian: false, isSpicy: false, preparationTime: 18, isAvailable: true, rating: 4.6, createdAt: firebase.firestore.FieldValue.serverTimestamp() },
+                    { name: 'Cơm Tấm', description: 'Cơm tấm sườn nướng, bì, chả trứng', category: 'Main Course', price: 55000, imageUrl: '', ingredients: ['cơm tấm', 'sườn nướng', 'bì', 'chả trứng', 'đồ chua'], isVegetarian: false, isSpicy: false, preparationTime: 15, isAvailable: true, rating: 4.4, createdAt: firebase.firestore.FieldValue.serverTimestamp() },
+                    { name: 'Bánh Mì Thịt Nướng', description: 'Bánh mì giòn với thịt nướng, pate, chả lụa', category: 'Main Course', price: 35000, imageUrl: '', ingredients: ['bánh mì', 'thịt nướng', 'pate', 'chả lụa', 'rau', 'đồ chua'], isVegetarian: false, isSpicy: false, preparationTime: 5, isAvailable: true, rating: 4.5, createdAt: firebase.firestore.FieldValue.serverTimestamp() },
+                    { name: 'Canh Chua Cá', description: 'Canh chua cá lóc chua ngọt, đậm đà', category: 'Soup', price: 60000, imageUrl: '', ingredients: ['cá lóc', 'cà chua', 'dứa', 'đậu bắp', 'rau thơm', 'me'], isVegetarian: false, isSpicy: false, preparationTime: 25, isAvailable: true, rating: 4.4, createdAt: firebase.firestore.FieldValue.serverTimestamp() },
+                    { name: 'Canh Khổ Qua', description: 'Canh khổ qua nhồi thịt, thanh mát', category: 'Soup', price: 50000, imageUrl: '', ingredients: ['khổ qua', 'thịt heo', 'nấm', 'hành'], isVegetarian: false, isSpicy: false, preparationTime: 30, isAvailable: true, rating: 4.2, createdAt: firebase.firestore.FieldValue.serverTimestamp() },
+                    { name: 'Chè Đậu Xanh', description: 'Chè đậu xanh mát lạnh, ngọt thanh', category: 'Dessert', price: 20000, imageUrl: '', ingredients: ['đậu xanh', 'đường', 'dừa', 'đá'], isVegetarian: true, isSpicy: false, preparationTime: 5, isAvailable: true, rating: 4.2, createdAt: firebase.firestore.FieldValue.serverTimestamp() },
+                    { name: 'Chè Ba Màu', description: 'Chè ba màu đậm đà, nhiều lớp', category: 'Dessert', price: 25000, imageUrl: '', ingredients: ['đậu xanh', 'đậu đỏ', 'thạch', 'nước cốt dừa', 'đá'], isVegetarian: true, isSpicy: false, preparationTime: 5, isAvailable: true, rating: 4.5, createdAt: firebase.firestore.FieldValue.serverTimestamp() },
+                    { name: 'Bánh Flan', description: 'Bánh flan mềm mịn, thơm ngon', category: 'Dessert', price: 30000, imageUrl: '', ingredients: ['trứng', 'sữa', 'đường', 'caramel'], isVegetarian: true, isSpicy: false, preparationTime: 3, isAvailable: true, rating: 4.6, createdAt: firebase.firestore.FieldValue.serverTimestamp() },
+                    { name: 'Cà Phê Sữa Đá', description: 'Cà phê sữa đá đậm đà phong cách Việt Nam', category: 'Beverage', price: 25000, imageUrl: '', ingredients: ['cà phê', 'sữa đặc', 'đá'], isVegetarian: true, isSpicy: false, preparationTime: 3, isAvailable: true, rating: 4.6, createdAt: firebase.firestore.FieldValue.serverTimestamp() },
+                    { name: 'Cà Phê Đen Đá', description: 'Cà phê đen đá nguyên chất', category: 'Beverage', price: 20000, imageUrl: '', ingredients: ['cà phê', 'đá'], isVegetarian: true, isSpicy: false, preparationTime: 3, isAvailable: true, rating: 4.4, createdAt: firebase.firestore.FieldValue.serverTimestamp() },
+                    { name: 'Nước Cam Ép', description: 'Nước cam ép tươi, giàu vitamin C', category: 'Beverage', price: 30000, imageUrl: '', ingredients: ['cam tươi', 'đá', 'đường'], isVegetarian: true, isSpicy: false, preparationTime: 5, isAvailable: true, rating: 4.5, createdAt: firebase.firestore.FieldValue.serverTimestamp() },
+                    { name: 'Sinh Tố Bơ', description: 'Sinh tố bơ béo ngậy, mát lạnh', category: 'Beverage', price: 35000, imageUrl: '', ingredients: ['bơ', 'sữa', 'đá', 'sữa đặc'], isVegetarian: true, isSpicy: false, preparationTime: 5, isAvailable: true, rating: 4.7, createdAt: firebase.firestore.FieldValue.serverTimestamp() },
+                ];
+
+                const menuItemIds = [];
+                const menuBatch = db.batch();
+                for (const item of menuItems) {
+                    const docRef = db.collection('menu_items').doc();
+                    menuItemIds.push(docRef.id);
+                    menuBatch.set(docRef, item);
+                }
+                await menuBatch.commit();
+                log(`✅ Đã seed ${menuItems.length} menu items`, 'success');
+
+                // 3. SEED RESERVATIONS
+                log('\n📝 Đang seed reservations...', 'info');
+                if (customerIds.length > 0 && menuItemIds.length > 0) {
+                    const now = new Date();
+                    const tomorrow = new Date(now);
+                    tomorrow.setDate(tomorrow.getDate() + 1);
+                    tomorrow.setHours(18, 0, 0, 0);
+
+                    const dayAfter = new Date(now);
+                    dayAfter.setDate(dayAfter.getDate() + 2);
+                    dayAfter.setHours(19, 30, 0, 0);
+
+                    const yesterday = new Date(now);
+                    yesterday.setDate(yesterday.getDate() - 1);
+                    yesterday.setHours(12, 0, 0, 0);
+
+                    const reservations = [
+                        {
+                            customerId: customerIds[0],
+                            reservationDate: firebase.firestore.Timestamp.fromDate(tomorrow),
+                            numberOfGuests: 2,
+                            tableNumber: null,
+                            status: 'pending',
+                            specialRequests: 'Bàn gần cửa sổ',
+                            orderItems: [],
+                            subtotal: 0,
+                            serviceCharge: 0,
+                            discount: 0,
+                            total: 0,
+                            paymentMethod: null,
+                            paymentStatus: 'pending',
+                            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                            updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                        },
+                        {
+                            customerId: customerIds[0],
+                            reservationDate: firebase.firestore.Timestamp.fromDate(dayAfter),
+                            numberOfGuests: 4,
+                            tableNumber: 'T05',
+                            status: 'confirmed',
+                            specialRequests: 'Yêu cầu bàn lớn',
+                            orderItems: [
+                                { itemId: menuItemIds[0], itemName: 'Gỏi Cuốn', quantity: 2, price: 35000, subtotal: 70000 },
+                                { itemId: menuItemIds[3], itemName: 'Phở Bò', quantity: 2, price: 50000, subtotal: 100000 },
+                                { itemId: menuItemIds[15], itemName: 'Cà Phê Sữa Đá', quantity: 2, price: 25000, subtotal: 50000 },
+                            ],
+                            subtotal: 220000,
+                            serviceCharge: 22000,
+                            discount: 0,
+                            total: 242000,
+                            paymentMethod: null,
+                            paymentStatus: 'pending',
+                            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                            updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                        },
+                        {
+                            customerId: customerIds[0],
+                            reservationDate: firebase.firestore.Timestamp.fromDate(yesterday),
+                            numberOfGuests: 3,
+                            tableNumber: 'T12',
+                            status: 'completed',
+                            specialRequests: null,
+                            orderItems: [
+                                { itemId: menuItemIds[5], itemName: 'Bún Bò Huế', quantity: 3, price: 55000, subtotal: 165000 },
+                                { itemId: menuItemIds[12], itemName: 'Chè Đậu Xanh', quantity: 3, price: 20000, subtotal: 60000 },
+                            ],
+                            subtotal: 225000,
+                            serviceCharge: 22500,
+                            discount: 10000,
+                            total: 237500,
+                            paymentMethod: 'card',
+                            paymentStatus: 'paid',
+                            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                            updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                        },
+                    ];
+
+                    const reservationBatch = db.batch();
+                    for (const reservation of reservations) {
+                        const docRef = db.collection('reservations').doc();
+                        reservationBatch.set(docRef, reservation);
+                    }
+                    await reservationBatch.commit();
+                    log(`✅ Đã seed ${reservations.length} reservations`, 'success');
+                }
+
+                log('\n🎉 HOÀN THÀNH! Đã seed dữ liệu vào Firestore:', 'success');
+                log(`- ${customers.length} customers`, 'info');
+                log(`- ${menuItems.length} menu items`, 'info');
+                log('- 3 reservations', 'info');
+                log('\n👉 Vào app Flutter để xem dữ liệu!', 'info');
+                log(`💡 Lưu ý: Màn hình "Lịch sử" sẽ hiển thị reservations của customerId: ${customerIds[0]}`, 'warning');
+
+            } catch (error) {
+                log(`❌ Lỗi: ${error.message}`, 'error');
+                console.error(error);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🌱 Seed Dữ Liệu';
+            }
+        }
+    </script>
+</body>
+</html>
